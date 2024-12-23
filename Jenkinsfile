@@ -10,7 +10,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Clean workspace before building
                 cleanWs()
                 checkout scm
             }
@@ -19,7 +18,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build the Docker image
                     docker.build("${DOCKER_FULL_IMAGE}")
                 }
             }
@@ -28,7 +26,6 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Run tests inside Docker container
                     docker.image("${DOCKER_FULL_IMAGE}").inside {
                         sh 'python -m pytest tests/ || true'
                     }
