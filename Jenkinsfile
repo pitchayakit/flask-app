@@ -5,6 +5,8 @@ pipeline {
         DOCKER_IMAGE = 'python-flask-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
         VENV = ".venv"
+        DOCKER_CREDENTIALS = 'docker-hub-credentials'
+        DOCKER_REGISTRY = 'your-docker-registry'
     }
 
     stages {
@@ -17,7 +19,6 @@ pipeline {
         stage('Setup Python Virtual Environment') {
             steps {
                 script {
-                    // Create and activate virtual environment
                     sh '''
                         python3 -m venv ${VENV}
                         . ${VENV}/bin/activate
@@ -30,7 +31,6 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install dependencies in virtual environment
                     sh '''
                         . ${VENV}/bin/activate
                         pip install -r requirements.txt
@@ -42,7 +42,6 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Run tests in virtual environment
                     sh '''
                         . ${VENV}/bin/activate
                         python -m pytest tests/
@@ -51,10 +50,10 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker Build and Push') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    def dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                 }
             }
         }
@@ -62,11 +61,31 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Stop existing container if running
-                    sh 'docker ps -q --filter "name=flask-app" | grep -q . && docker stop flask-app && docker rm flask-app || echo "No container running"'
+                    sh '''
+                        docker ps -q --filter "name=flask-app" | grep -q . && \
+                        docker stop flask-app && \
+                        docker rm flask-app || echo "No container running"
+                    '''
                     
-                    // Run new container
-                    sh "docker run -d --name flask-app -p 5000:5000 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    sh """
+                        docker run -d \
+                            --name flask-app \
+                            -p 5000:5000 \
+                            ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    sh 'sleep 10'
+                    
+                    sh '''
+                        curl -f http://localhost:5000/health || exit 1
+                        echo "Application health check passed"
+                    '''
                 }
             }
         }
@@ -74,14 +93,21 @@ pipeline {
 
     post {
         always {
-            // Clean up virtual environment
-            sh 'rm -rf ${VENV}'
-        }
-        failure {
-            echo 'Pipeline failed! Sending notification...'
+            sh '''
+                rm -rf ${VENV}
+                docker image prune -f
+            '''
         }
         success {
             echo 'Pipeline succeeded! Application deployed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed! Sending notification...'
+            sh '''
+                docker ps -q --filter "name=flask-app" | grep -q . && \
+                docker stop flask-app && \
+                docker rm flask-app || echo "No container running"
+            '''
         }
     }
 } 
