@@ -7,6 +7,7 @@ pipeline {
         VENV = ".venv"
         DOCKER_CREDENTIALS = 'docker-hub-credentials'
         DOCKER_REGISTRY = 'your-docker-registry'
+        PYTHON_VERSION = "python3.12"
     }
 
     stages {
@@ -16,11 +17,21 @@ pipeline {
             }
         }
 
-        stage('Setup Python Virtual Environment') {
+        stage('Setup Python Environment') {
             steps {
                 script {
                     sh '''
-                        python3 -m venv ${VENV}
+                        # Install Python 3.12 venv package if not present
+                        if ! dpkg -l | grep -q python3.12-venv; then
+                            echo "Python3.12-venv not found. Installing..."
+                            sudo apt update
+                            sudo apt install -y python3.12-venv
+                        fi
+                        
+                        # Create virtual environment with Python 3.12
+                        ${PYTHON_VERSION} -m venv ${VENV}
+                        
+                        # Activate and upgrade pip
                         . ${VENV}/bin/activate
                         python3 -m pip install --upgrade pip
                     '''
