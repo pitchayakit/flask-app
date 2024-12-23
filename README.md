@@ -38,7 +38,7 @@ pip install -r requirements.txt
 
 4. Run the application locally:
 ```bash
-python app.py
+python app/app.py
 ```
 
 ## 🐳 Docker Setup
@@ -58,11 +58,9 @@ docker run -d -p 5000:5000 python-app:latest
 The project includes a Jenkinsfile that defines the CI/CD pipeline with the following stages:
 
 1. Checkout
-2. Build
-3. Test
-4. Docker Build
-5. Docker Push
-6. Deploy
+2. Build Docker Image
+3. Run Tests
+4. Deploy
 
 ### Jenkins Pipeline Setup
 
@@ -72,6 +70,22 @@ The project includes a Jenkinsfile that defines the CI/CD pipeline with the foll
 4. Configure necessary credentials:
    - Docker registry credentials
    - Deployment credentials
+
+### Jenkins Pipeline Details
+
+- **Environment Variables**:
+  - `DOCKER_IMAGE`: Name of the Docker image.
+  - `DOCKER_TAG`: Tag for the Docker image, set to the Jenkins build number.
+  - `DOCKER_FULL_IMAGE`: Full image name with tag.
+
+- **Stages**:
+  - **Checkout**: Cleans workspace and checks out the source code.
+  - **Build Docker Image**: Builds the Docker image using the `Dockerfile`.
+  - **Run Tests**: Executes tests inside the Docker container.
+  - **Deploy**: Stops and removes any existing container and runs a new one with the latest image.
+
+- **Post Actions**:
+  - On failure, stops and removes any running containers to clean up.
 
 ## 📁 Project Structure
 
@@ -93,6 +107,7 @@ The project includes a Jenkinsfile that defines the CI/CD pipeline with the foll
 ```bash
 pytest tests/
 ```
+
 ## 🚀 Deployment
 
 The application can be deployed using:
